@@ -64,7 +64,7 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
-          node-version: "18.x"
+          node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
 
       - name: Setup git config
@@ -76,7 +76,7 @@ jobs:
         env:
           VERSION: ${{steps.version.outputs.value}}
         run:
-          ./.github/scripts/release.sh -V "$VERSION"
+          ./.github/scripts/release.sh -V "$VERSION" -m "Bump CLI tools to "
           "tools/create-liveblocks-app" "tools/liveblocks-codemod"
 
       - name: Build all CLI tools

@@ -8,19 +8,25 @@ err () {
 }
 
 usage () {
-    err "usage: release.sh [-h] [-V <version>] <pkgdir> [<pkgdir>...]"
+    err "usage: release.sh [-h] [-V <version>] [-p] [-m <message>] <pkgdir> [<pkgdir>...]"
     err
     err "Prepare a release by updating files in this repo."
-    err "Run this prior to publishing to NPM."
+    err "Run this prior to publishing to NPM (or elsewhere, e.g. DevTools)."
     err ""
     err "    -V   the new NPM version"
+    err "    -p   push the bump commit (no need if publish.sh is called afterwards)"
+    err "    -m   improve the commit message by specifying what was bumped"
     err ""
 }
 
 VERSION=
-while getopts V:h flag; do
+PUSH_COMMIT="false"
+COMMIT_MESSAGE="Bump to "
+while getopts V:p:m:h flag; do
     case "$flag" in
         V) VERSION=$OPTARG;;
+        p) PUSH_COMMIT="true";;
+        m) COMMIT_MESSAGE=$OPTARG;;
         *) usage; exit 2;;
     esac
 done
@@ -83,18 +89,40 @@ commit_to_git () {
         if git is-dirty -i; then
             git commit -m "$msg"
         fi
+        if [ "$PUSH_COMMIT" = "true" ]; then
+            echo "==> Pushing changes to GitHub"
+            if ! git push-current; then
+                echo "WARNING: Could not push this branch to GitHub!" >&2
+                echo "Please manually fix that now." >&2
+                exit 2
+            else
+                echo "Done!"
+            fi
+        fi
     ) )
 }
 
 check_is_valid_version "$VERSION"
 
-# Set up turbo
-npm install
+# Run a fresh `npm i` to ensure the lock file isn't outdated before continuing
+npm install --no-audit
+git is-clean -v
 
 for PKGDIR in "${PKGS_TO_RELEASE[@]}"; do
     update_package_version "$PKGDIR" "$VERSION"
 done
 
 # Update package-lock.json with newly bumped versions
-npm install
-commit_to_git "Bump to $VERSION" "package-lock.json" "packages/" "tools/"
+npm install --no-audit
+npm ci --no-audit
+npm install --no-audit
+
+# The following pattern is always indicative of a bug in this script, so let's
+# fail if this is found
+if grep -qEe 'packages/liveblocks-.*/node_modules/@liveblocks' package-lock.json; then
+    err "The lockfile contains a pattern that should not exist"
+    err "Please manually debug this to figure out what went wrong during the update"
+    exit 4
+fi
+
+commit_to_git "${COMMIT_MESSAGE}${VERSION}" "package-lock.json" "packages/" "tools/"
