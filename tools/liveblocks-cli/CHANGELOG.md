@@ -1,5 +1,7 @@
 ## vNEXT (not yet released)
 
+- Add support for `client.mutateStorage()` (from `@liveblocks/node`)
+
 ## v1.3.0
 
 - Add feeds support (`feeds:write` permission)
