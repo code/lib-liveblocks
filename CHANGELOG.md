@@ -1,5 +1,12 @@
 ## vNEXT (not yet released)
 
+## v3.18.2
+
+### `@liveblocks/client`
+
+- Fix `ToJson` type losing specific value types for `Record<string, T>` fields
+  in Storage
+
 ## v3.18.1
 
 ### `@liveblocks/react-ui`
