@@ -1336,8 +1336,8 @@ type RoomState<
   pool: ManagedPool;
   root: LiveObject<S> | undefined;
 
-  readonly undoStack: Stackframe<P>[][];
-  readonly redoStack: Stackframe<P>[][];
+  undoStack: Stackframe<P>[][];
+  redoStack: Stackframe<P>[][];
 
   /**
    * When history is paused, all operations will get queued up here. When
@@ -1891,7 +1891,7 @@ export function createRoom<
 
     // Populate missing top-level keys using `initialStorage`
     const root = context.root;
-    withoutHistory(() => {
+    disableHistory(() => {
       for (const key in context.initialStorage) {
         if (root.get(key) === undefined) {
           if (canWrite) {
@@ -2287,7 +2287,9 @@ export function createRoom<
 
   function canUndo() { return context.undoStack.length > 0; } // prettier-ignore
   function canRedo() { return context.redoStack.length > 0; } // prettier-ignore
+
   function onHistoryChange() {
+    if (historyDisabled > 0) return;
     eventHub.history.notify({ canUndo: canUndo(), canRedo: canRedo() });
   }
 
@@ -3361,14 +3363,26 @@ export function createRoom<
     commitPausedHistoryToUndoStack();
   }
 
-  function withoutHistory<T>(fn: () => T): T {
-    const undoBefore = context.undoStack.length;
-    const redoBefore = context.redoStack.length;
+  // Depth counter for nested history.disable() calls, 0 means history is not disabled
+  let historyDisabled = 0;
+
+  function disableHistory<T>(fn: () => T): T {
+    const origUndo = context.undoStack;
+    const origRedo = context.redoStack;
+    const tempUndo: Stackframe<P>[][] = [];
+    const tempRedo: Stackframe<P>[][] = [];
+    context.undoStack = tempUndo;
+    context.redoStack = tempRedo;
+    historyDisabled++;
     try {
       return fn();
     } finally {
-      context.undoStack.length = undoBefore;
-      context.redoStack.length = redoBefore;
+      historyDisabled--;
+      if (context.undoStack !== tempUndo || context.redoStack !== tempRedo) {
+        throw new Error("unexpected stack swap during history.disable()"); // eslint-disable-line no-unsafe-finally
+      }
+      context.undoStack = origUndo;
+      context.redoStack = origRedo;
     }
   }
 
@@ -3805,7 +3819,7 @@ export function createRoom<
         clear,
         pause: pauseHistory,
         resume: resumeHistory,
-        disable: withoutHistory,
+        disable: disableHistory,
       },
 
       fetchYDoc,
