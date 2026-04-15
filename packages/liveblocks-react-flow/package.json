@@ -1,6 +1,6 @@
 {
   "name": "@liveblocks/react-flow",
-  "version": "3.18.1",
+  "version": "3.18.2",
   "description": "An integration of React Flow to enable collaboration and realtime cursors with Liveblocks.",
   "license": "Apache-2.0",
   "author": "Liveblocks Inc.",
@@ -63,10 +63,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@liveblocks/client": "3.18.1",
-    "@liveblocks/core": "3.18.1",
-    "@liveblocks/react": "3.18.1",
-    "@liveblocks/react-ui": "3.18.1"
+    "@liveblocks/client": "3.18.2",
+    "@liveblocks/core": "3.18.2",
+    "@liveblocks/react": "3.18.2",
+    "@liveblocks/react-ui": "3.18.2"
   },
   "peerDependencies": {
     "@xyflow/react": "^12",
