@@ -13,11 +13,12 @@
   "dependencies": {
     "@liveblocks/client": "*",
     "@liveblocks/node": "*",
-    "dotenv": "^16.0.0",
-    "ws": "^8.5.0"
+    "dotenv": "^16.0.0"
   },
   "devDependencies": {
     "@liveblocks/vitest-config": "*",
-    "@types/ws": "^8.5.0"
+    "@types/ws": "^8.5.0",
+    "eslint": "^9.39.4",
+    "vitest": "^4.1.4"
   }
 }

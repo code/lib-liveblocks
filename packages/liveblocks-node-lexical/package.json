@@ -48,7 +48,9 @@
   },
   "devDependencies": {
     "@liveblocks/eslint-config": "*",
-    "@liveblocks/vitest-config": "*"
+    "@liveblocks/vitest-config": "*",
+    "eslint": "^9.39.4",
+    "vitest": "^4.1.4"
   },
   "bugs": {
     "url": "https://github.com/liveblocks/liveblocks/issues"
