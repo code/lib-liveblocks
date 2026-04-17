@@ -36,12 +36,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@liveblocks/core": "3.18.2"
+    "@liveblocks/core": "workspace:*"
   },
   "devDependencies": {
-    "@liveblocks/eslint-config": "*",
-    "@liveblocks/vitest-config": "*",
+    "@liveblocks/eslint-config": "workspace:*",
+    "@liveblocks/vitest-config": "workspace:*",
     "eslint": "^9.39.4",
+    "typescript": "^5.9.3",
     "vitest": "^4.1.4"
   },
   "sideEffects": false,
