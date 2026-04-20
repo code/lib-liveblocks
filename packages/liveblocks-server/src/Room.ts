@@ -1467,7 +1467,6 @@ export class Room<RM, SM, CM extends JsonObject, C = undefined> {
    * @internal
    * Handles an incoming ping, by sending a pong back.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
   private async handlePing(sessionKey: SessionKey, ctx?: C): Promise<void> {
     const session = this.sessions.get(sessionKey);
     if (session === undefined) {
