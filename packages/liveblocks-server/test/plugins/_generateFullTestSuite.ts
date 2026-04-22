@@ -5500,7 +5500,7 @@ export function generateFullTestSuite<TDriver extends IStorageDriver>(config: {
       const yjsStorage = new YjsStorage(driver);
 
       // Load the root doc
-      await yjsStorage.loadDocByIdIfNotAlreadyLoaded(guid);
+      await yjsStorage.loadDocByIdIfNotAlreadyLoaded(blackHole, guid);
 
       return await callback({ yjsStorage });
     }

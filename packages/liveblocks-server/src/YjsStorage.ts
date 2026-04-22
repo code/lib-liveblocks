@@ -27,6 +27,24 @@ import type { Logger } from "~/lib/Logger";
 // How many updates to store before compacting
 const UPDATE_COUNT_THRESHOLD = 1_000;
 
+// log 10% of the time a merge would shrink
+const MERGE_SHRINK_WARN_SAMPLE_RATE = 0.1;
+const MERGE_SHRINK_THRESHOLD = 0.8;
+
+// Writes a log if the merge would shrink significantly
+function warnIfYjsMergeShrunk(
+  logger: Logger,
+  oldSize: number,
+  newSize: number
+): void {
+  if (
+    oldSize * MERGE_SHRINK_THRESHOLD > newSize &&
+    Math.random() < MERGE_SHRINK_WARN_SAMPLE_RATE
+  ) {
+    logger.warn(`merged < 80% of sum: ${oldSize} -> ${newSize}`);
+  }
+}
+
 export class YjsStorage {
   private readonly driver: IStorageDriver;
   private readonly updateCountThreshold: number;
@@ -53,8 +71,8 @@ export class YjsStorage {
   // Public API
   // ------------------------------------------------------------------------------------
 
-  public async getYDoc(docId: YDocId): Promise<Y.Doc> {
-    const doc = await this.loadDocByIdIfNotAlreadyLoaded(docId);
+  public async getYDoc(logger: Logger, docId: YDocId): Promise<Y.Doc> {
+    const doc = await this.loadDocByIdIfNotAlreadyLoaded(logger, docId);
     return doc;
   }
 
@@ -86,7 +104,8 @@ export class YjsStorage {
     guid?: Guid,
     isV2: boolean = false
   ): Promise<Uint8Array<ArrayBuffer> | null> {
-    const doc = guid !== undefined ? await this.getYSubdoc(guid) : this.doc;
+    const doc =
+      guid !== undefined ? await this.getYSubdoc(logger, guid) : this.doc;
     if (!doc) {
       return null;
     }
@@ -106,21 +125,28 @@ export class YjsStorage {
     return Y.encodeStateAsUpdate(doc, encodedTargetVector);
   }
 
-  public async getYStateVector(guid?: Guid): Promise<string | null> {
-    const doc = guid !== undefined ? await this.getYSubdoc(guid) : this.doc;
+  public async getYStateVector(
+    logger: Logger,
+    guid?: Guid
+  ): Promise<string | null> {
+    const doc =
+      guid !== undefined ? await this.getYSubdoc(logger, guid) : this.doc;
     if (!doc) {
       return null;
     }
     return Base64.fromUint8Array(Y.encodeStateVector(doc));
   }
 
-  public async getSnapshotHash(options: {
-    guid?: Guid;
-    isV2?: boolean;
-  }): Promise<string | null> {
+  public async getSnapshotHash(
+    logger: Logger,
+    options: {
+      guid?: Guid;
+      isV2?: boolean;
+    }
+  ): Promise<string | null> {
     const doc =
       options.guid !== undefined
-        ? await this.getYSubdoc(options.guid)
+        ? await this.getYSubdoc(logger, options.guid)
         : this.doc;
     if (!doc) {
       return null;
@@ -141,7 +167,8 @@ export class YjsStorage {
     guid?: Guid,
     isV2?: boolean
   ): Promise<{ isUpdated: boolean; snapshotHash: string }> {
-    const doc = guid !== undefined ? await this.getYSubdoc(guid) : this.doc;
+    const doc =
+      guid !== undefined ? await this.getYSubdoc(logger, guid) : this.doc;
     if (!doc) {
       throw new Error(`YDoc with guid ${guid} not found`);
     }
@@ -174,7 +201,10 @@ export class YjsStorage {
     }
   }
 
-  public loadDocByIdIfNotAlreadyLoaded(docId: YDocId): Promise<Y.Doc> {
+  public loadDocByIdIfNotAlreadyLoaded(
+    logger: Logger,
+    docId: YDocId
+  ): Promise<Y.Doc> {
     let loaded$ = this.initPromisesById.get(docId);
     let doc = docId === ROOT_YDOC_ID ? this.doc : this.findYSubdocByGuid(docId);
     if (!doc) {
@@ -182,14 +212,14 @@ export class YjsStorage {
       doc = new Y.Doc();
     }
     if (loaded$ === undefined) {
-      loaded$ = this._loadYDocFromDurableStorage(doc, docId);
+      loaded$ = this._loadYDocFromDurableStorage(logger, doc, docId);
       this.initPromisesById.set(docId, loaded$);
     }
     return loaded$;
   }
 
-  public async load(_logger: Logger): Promise<void> {
-    await this.loadDocByIdIfNotAlreadyLoaded(ROOT_YDOC_ID);
+  public async load(logger: Logger): Promise<void> {
+    await this.loadDocByIdIfNotAlreadyLoaded(logger, ROOT_YDOC_ID);
   }
 
   /**
@@ -245,6 +275,7 @@ export class YjsStorage {
   };
 
   private _loadYDocFromDurableStorage = async (
+    logger: Logger,
     doc: Y.Doc,
     docId: YDocId
   ): Promise<Y.Doc> => {
@@ -252,8 +283,10 @@ export class YjsStorage {
       await this.driver.iter_y_updates(docId)
     );
     const updates = Object.values(docUpdates);
+    const beforeSize = updates.reduce((acc, update) => acc + update.length, 0);
     const newupdate = Y.mergeUpdates(updates);
     const storedKeys = Object.keys(docUpdates);
+    warnIfYjsMergeShrunk(logger, beforeSize, newupdate.length);
     Y.applyUpdate(doc, newupdate);
     // after compaction, there will only be one unique key.
     if (this.shouldCompact(storedKeys)) {
@@ -290,12 +323,12 @@ export class YjsStorage {
   }
 
   // gets a subdoc, it will be loaded if not already loaded
-  private async getYSubdoc(guid: Guid): Promise<Y.Doc | null> {
+  private async getYSubdoc(logger: Logger, guid: Guid): Promise<Y.Doc | null> {
     const subdoc = this.findYSubdocByGuid(guid);
     if (!subdoc) {
       return null;
     }
-    await this.loadDocByIdIfNotAlreadyLoaded(guid);
+    await this.loadDocByIdIfNotAlreadyLoaded(logger, guid);
     return subdoc;
   }
 

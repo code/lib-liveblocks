@@ -17,9 +17,11 @@
 
 import type { Json, JsonObject, PlainLsonObject } from "@liveblocks/core";
 import { QueryParser } from "@liveblocks/query-parser";
-import type { Guid, Logger, YDocId } from "@liveblocks/server";
+import type { Guid, YDocId } from "@liveblocks/server";
 import {
+  ConsoleTarget,
   jsonObjectYolo,
+  Logger,
   ROOT_YDOC_ID,
   snapshotToLossyJson_eager,
   snapshotToNodeStream,
@@ -371,8 +373,8 @@ zen.route("GET /v2/rooms/<roomId>/ydoc", async ({ url, p }) => {
   const type = url.searchParams.get("type") ?? "";
   const ydocId = (url.searchParams.get("guid") ?? ROOT_YDOC_ID) as YDocId;
   const formatting = url.searchParams.get("formatting") !== null;
-
-  const doc = await room.yjsStorage.getYDoc(ydocId);
+  const logger = new Logger(new ConsoleTarget("warning"));
+  const doc = await room.yjsStorage.getYDoc(logger, ydocId);
   const result = yDocToJson(doc, key, formatting, type);
 
   return new Response(JSON.stringify(result), {
@@ -449,7 +451,8 @@ zen.route("GET /v2/rooms/<roomId>/ydoc-binary", async ({ url, p }) => {
   const ydocId = (url.searchParams.get("guid") ?? ROOT_YDOC_ID) as YDocId;
   const encoder = url.searchParams.get("encoder");
 
-  const doc = await room.yjsStorage.getYDoc(ydocId);
+  const logger = new Logger(new ConsoleTarget("warning"));
+  const doc = await room.yjsStorage.getYDoc(logger, ydocId);
   const update =
     encoder === "v2"
       ? Y.encodeStateAsUpdateV2(doc)

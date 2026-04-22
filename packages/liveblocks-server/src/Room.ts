@@ -1739,8 +1739,8 @@ export class Room<RM, SM, CM extends JsonObject, C = undefined> {
         const isV2 = msg.v2;
         const [update, stateVector, snapshotHash] = await Promise.all([
           this.yjsStorage.getYDocUpdate(this.logger, vector, guid, isV2),
-          this.yjsStorage.getYStateVector(guid),
-          this.yjsStorage.getSnapshotHash({ guid, isV2 }),
+          this.yjsStorage.getYStateVector(this.logger, guid),
+          this.yjsStorage.getSnapshotHash(this.logger, { guid, isV2 }),
         ]);
 
         if (update !== null && snapshotHash !== null) {
